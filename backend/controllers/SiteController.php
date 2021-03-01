@@ -1,11 +1,16 @@
 <?php
+
 namespace backend\controllers;
 
+use app\models\Apple;
+use app\models\AppleSearch;
 use Yii;
+use yii\db\Expression;
 use yii\web\Controller;
 use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
 use common\models\LoginForm;
+use yii\web\NotFoundHttpException;
 
 /**
  * Site controller
@@ -26,7 +31,7 @@ class SiteController extends Controller
                         'allow' => true,
                     ],
                     [
-                        'actions' => ['logout', 'index'],
+                        'actions' => ['logout', 'index', 'create', 'fail'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -60,7 +65,13 @@ class SiteController extends Controller
      */
     public function actionIndex()
     {
-        return $this->render('index');
+        $searchModel = new AppleSearch();
+        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
+
+        return $this->render('index', [
+            'searchModel' => $searchModel,
+            'dataProvider' => $dataProvider,
+        ]);
     }
 
     /**
@@ -89,6 +100,34 @@ class SiteController extends Controller
     }
 
     /**
+     * @return string|\yii\web\Response
+     */
+    public function actionCreate()
+    {
+        $count = Apple::createApplies();
+        $infoString = "Новых яблок: $count";
+
+        Yii::$app->session->setFlash('info', $infoString);
+
+        return $this->redirect('index');
+    }
+
+    /**
+     * @param $id
+     * @return \yii\web\Response
+     * @throws \yii\web\NotFoundHttpException
+     */
+    public function actionFail($id)
+    {
+        $model = $this->findModel($id);
+        $model->fail();
+
+        Yii::$app->session->setFlash('info', "Яблока №{$model->id} упало");
+
+        return $this->redirect('index');
+    }
+
+    /**
      * Logout action.
      *
      * @return string
@@ -98,5 +137,21 @@ class SiteController extends Controller
         Yii::$app->user->logout();
 
         return $this->goHome();
+    }
+
+    /**
+     * Finds the Apple model based on its primary key value.
+     * If the model is not found, a 404 HTTP exception will be thrown.
+     * @param integer $id
+     * @return Apple the loaded model
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    protected function findModel($id)
+    {
+        if (($model = Apple::findOne($id)) !== null) {
+            return $model;
+        }
+
+        throw new NotFoundHttpException('The requested page does not exist.');
     }
 }
