@@ -2,15 +2,17 @@
 
 namespace backend\controllers;
 
+use app\exceptions\AppleException;
 use app\models\Apple;
 use app\models\AppleSearch;
 use Yii;
-use yii\db\Expression;
 use yii\web\Controller;
 use yii\filters\VerbFilter;
 use yii\filters\AccessControl;
 use common\models\LoginForm;
 use yii\web\NotFoundHttpException;
+use app\models\EatForm;
+
 
 /**
  * Site controller
@@ -31,7 +33,7 @@ class SiteController extends Controller
                         'allow' => true,
                     ],
                     [
-                        'actions' => ['logout', 'index', 'create', 'fail'],
+                        'actions' => ['logout', 'index', 'create', 'fail', 'eat', 'add-hour'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -120,9 +122,61 @@ class SiteController extends Controller
     public function actionFail($id)
     {
         $model = $this->findModel($id);
-        $model->fail();
+        try {
+            $model->fail();
+            Yii::$app->session->setFlash('info', "Яблока №{$model->id} упало");
+        } catch (AppleException $e) {
+            Yii::$app->session->setFlash('error', $e->getMessage());
+        } catch (\Exception $e) {
+            Yii::$app->session->setFlash('error', 'Неизвестная ошибка: ' . $e->getMessage());
+        }
 
-        Yii::$app->session->setFlash('info', "Яблока №{$model->id} упало");
+        return $this->redirect('index');
+    }
+
+    /**
+     * @param $id
+     * @return \yii\web\Response
+     * @throws \yii\web\NotFoundHttpException
+     */
+    public function actionEat($id)
+    {
+        $model = new EatForm();
+        if ($model->load(Yii::$app->request->post())) {
+            $apple = $this->findModel($id);
+            try {
+                $apple->eat($model->eaten);
+                Yii::$app->session->setFlash('info', "От яблока №{$apple->id} съедено {$model->eaten}%");
+                if ($apple->eaten == 0) {
+                    $apple->delete();
+                    Yii::$app->session->addFlash('info', "Яблоко №{$apple->id} съедено полностью");
+                }
+                return $this->redirect(['index']);
+            } catch (AppleException $e) {
+                Yii::$app->session->setFlash('error', $e->getMessage());
+            } catch (\Exception $e) {
+                Yii::$app->session->setFlash('error', 'Неизвестная ошибка: ' . $e->getMessage());
+            }
+        }
+        return $this->render('eat', ['model' => $model]);
+    }
+
+    /**
+     * @param $id
+     * @return \yii\web\Response
+     * @throws \yii\web\NotFoundHttpException
+     */
+    public function actionAddHour($id)
+    {
+        $model = $this->findModel($id);
+        try {
+            $model->addHourFail();
+            Yii::$app->session->setFlash('info', "Время падения яблока №{$model->id} увеличилось на 1 час");
+        } catch (AppleException $e) {
+            Yii::$app->session->setFlash('error', $e->getMessage());
+        } catch (\Exception $e) {
+            Yii::$app->session->setFlash('error', 'Неизвестная ошибка: ' . $e->getMessage());
+        }
 
         return $this->redirect('index');
     }

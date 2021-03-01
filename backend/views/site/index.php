@@ -3,7 +3,6 @@
 use yii\grid\GridView;
 use yii\helpers\Html;
 use app\models\Apple;
-use yii\widgets\ActiveForm;
 
 /* @var $this yii\web\View */
 /* @var $searchModel app\models\AppleSearch */
@@ -18,7 +17,6 @@ $this->title = 'Жизнь яблок';
     <p>
         <?= Html::a('Создать яблоки', ['create'], ['class' => 'btn btn-success']) ?>
     </p>
-    <?php $form = ActiveForm::begin(); ?>
     <?= GridView::widget([
         'dataProvider' => $dataProvider,
         'filterModel' => $searchModel,
@@ -30,38 +28,53 @@ $this->title = 'Жизнь яблок';
                 'attribute' => 'color',
                 'value' => function (Apple $model) {
                     return $model->getColor();
-                }
+                },
+                'filter' => Apple::getColorList(),
             ],
             [
                 'attribute' => 'status',
                 'value' => function (Apple $model) {
                     return $model->getStatus();
-                }
+                },
+                'filter' => Apple::getStatusList(),
             ],
             [
                 'attribute' => 'eaten',
                 'value' => function (Apple $model) {
                     return $model->eaten . '%';
-                }
+                },
+                'filter' => \app\models\EatForm::getEatList(),
             ],
 
             'dateAppearance',
             'dateFail',
-
             [
-                'value' => function (Apple $model) {
-                    if ($model->status == Apple::STATUS_ON_TREE) {
-                        return Html::a('Упасть', ['fail', 'id' => $model->id], ['class' => 'btn btn-success']);
-                    }
-                    if ($model->status == Apple::STATUS_ON_GROUND) {
-                        return '';
-                    }
-                    return '';
-                },
-                'format' => 'html',
-            ]
+                'class' => 'yii\grid\ActionColumn',
+                'template' => '{fail} {eat} {add-hour}',
+                'buttons' => [
+                    'fail' => function ($url) {
+                        return Html::a('Упасть', $url, ['class' => 'btn btn-primary']);
+                    },
+                    'eat' => function ($url) {
+                        return Html::a('Съесть', $url, ['class' => 'btn btn-warning']);
+                    },
+                    'add-hour' => function ($url) {
+                        return Html::a('+1 час', $url, ['class' => 'btn btn-info']);
+                    },
+                ],
+                'visibleButtons' => [
+                    'fail' => function (Apple $model) {
+                        return $model->status == Apple::STATUS_ON_TREE;
+                    },
+                    'eat' => function (Apple $model) {
+                        return $model->status == Apple::STATUS_ON_GROUND;
+                    },
+                    'add-hour' => function (Apple $model) {
+                        return $model->status == Apple::STATUS_ON_GROUND;
+                    },
+                ]
+            ],
         ],
     ]); ?>
 
-    <?php ActiveForm::end(); ?>
 </div>

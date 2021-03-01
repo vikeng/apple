@@ -17,7 +17,7 @@ class m210301_072300_apple extends Migration
             'id' => $this->primaryKey(),
             'color' => $this->smallInteger(1)->notNull()->defaultValue(0),
             'status' => $this->smallInteger(1)->notNull()->defaultValue(0),
-            'eaten' => $this->smallInteger(1)->notNull()->defaultValue(0),
+            'eaten' => $this->smallInteger(1)->notNull()->defaultValue(100),
             'dateAppearance' => $this->timestamp()->notNull(),
             'dateFail' => $this->timestamp()->null()->defaultValue(null),
         ], $options);

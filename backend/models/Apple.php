@@ -2,8 +2,11 @@
 
 namespace app\models;
 
+use app\exceptions\AppleException;
 use yii\db\Expression;
 use yii\helpers\ArrayHelper;
+use DateTime;
+use DateInterval;
 
 /**
  * This is the model class for table "{{%apple}}".
@@ -26,7 +29,9 @@ class Apple extends \yii\db\ActiveRecord
     const STATUS_ON_GROUND = 1;
     const STATUS_ROTTEN = 2;
 
-    const MAX_CREATED_APPLE = 2;
+    const MAX_CREATED_APPLE = 5;
+    const MAX_TIME_APPEARANCE = 5 * 24 * 60 * 60;
+    const TIME_ROTTEN = 5 * 60 * 60;
 
     /**
      * {@inheritdoc}
@@ -56,7 +61,7 @@ class Apple extends \yii\db\ActiveRecord
             'id' => 'ID',
             'color' => 'Цвет',
             'status' => 'Статус',
-            'eaten' => 'Съедено',
+            'eaten' => 'Осталось',
             'dateAppearance' => 'Дата появления',
             'dateFail' => 'Дата падения',
         ];
@@ -113,14 +118,16 @@ class Apple extends \yii\db\ActiveRecord
     public static function createApplies()
     {
         $count = mt_rand(1, Apple::MAX_CREATED_APPLE);
-        $model = new Apple([
-            'color' => mt_rand(0, 4),
-            'status' => Apple::STATUS_ON_TREE,
-            'eaten' => 0,
-            'dateAppearance' => new Expression('NOW()'),
-            'dateFail' => null,
-        ]);
-        $model->save();
+        for ($i = 0; $i < $count; $i++) {
+            $model = new Apple([
+                'color' => mt_rand(0, 3),
+                'status' => Apple::STATUS_ON_TREE,
+                'eaten' => 100,
+                'dateAppearance' => new Expression('FROM_UNIXTIME(UNIX_TIMESTAMP()-FLOOR(RAND()*' . Apple::MAX_TIME_APPEARANCE . '))'),
+                'dateFail' => null,
+            ]);
+            $model->save();
+        }
 
         return $count;
     }
@@ -130,8 +137,56 @@ class Apple extends \yii\db\ActiveRecord
      */
     public function fail()
     {
+        if ($this->status != Apple::STATUS_ON_TREE) {
+            throw new AppleException('Упасть может только яблоко висящее на дереве');
+        }
         $this->status = Apple::STATUS_ON_GROUND;
         $this->dateFail = new Expression('NOW()');
         return $this->save();
+    }
+
+    /**
+     * @return bool
+     */
+    public function eat($eaten)
+    {
+        if ($this->status == Apple::STATUS_ON_TREE) {
+            throw new AppleException('Нельзя съесть яблоко висящее на дереве');
+        }
+        if ($this->status == Apple::STATUS_ROTTEN) {
+            throw new AppleException('Нельзя съесть гнилое яблоко');
+        }
+        if ($this->eaten - $eaten >= 0) {
+            $this->eaten -= $eaten;
+            return $this->save();
+        } else {
+            throw new AppleException('Оставшегося яблока недостаточно, чтобы столько съесть');
+        }
+    }
+
+    /**
+     * Для удобства отладки и проверки
+     */
+    public function addHourFail()
+    {
+        if ($this->status != Apple::STATUS_ON_GROUND) {
+            throw new AppleException('Увеличить время можно только для несгнившего яблока лежащего на земле');
+        }
+        $this->dateFail = DateTime::createFromFormat('Y-m-d H:i:s', $this->dateFail)
+            ->sub(new DateInterval('PT1H'))
+            ->format('Y-m-d H:i:s');
+        $this->save();
+    }
+
+    /**
+     * Перевод яблок лежащих на земле в гнилые
+     */
+    public static function updateStatusApplies()
+    {
+        Apple::updateAll(['status' => Apple::STATUS_ROTTEN], [
+            'AND',
+            ['status' => Apple::STATUS_ON_GROUND],
+            ['>', new Expression('UNIX_TIMESTAMP()-UNIX_TIMESTAMP(dateFail)'), Apple::TIME_ROTTEN],
+        ]);
     }
 }

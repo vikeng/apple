@@ -12,9 +12,9 @@ $this->title = 'Login';
 <div class="site-login">
     <h1><?= Html::encode($this->title) ?></h1>
 
-    <p>Please fill out the following fields to login:</p>
+    <p>Please fill out the following fields to login:<br/> login - user, password - 12345678</p>
 
-            <?php $form = ActiveForm::begin(['id' => 'login-form']); ?>
+    <?php $form = ActiveForm::begin(['id' => 'login-form']); ?>
 
                 <?= $form->field($model, 'username')->textInput(['autofocus' => true]) ?>
 
